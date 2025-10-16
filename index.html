@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>⚡ LeakOSINT Cyber Search</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #02060a;
+  --panel: #0b0f15;
+  --neon1: #00f0ff;
+  --neon2: #ff2fe6;
+  --text: #cfdbe8;
+  --muted: #8ea0b2;
+}
+*{box-sizing:border-box}
+body {
+  background: radial-gradient(circle at 20% 20%, rgba(0,255,255,0.05), transparent),
+              radial-gradient(circle at 80% 80%, rgba(255,0,255,0.05), transparent),
+              var(--bg);
+  font-family: "Share Tech Mono", monospace;
+  color: var(--text);
+  margin: 0;
+  padding: 1.2rem;
+  min-height: 100vh;
+}
+.container {
+  max-width: 920px;
+  margin: auto;
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 1.6rem;
+  box-shadow: 0 0 40px rgba(0,240,255,0.06);
+}
+.header-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
+h1 { color: var(--neon1); text-shadow: 0 0 10px var(--neon1); font-size:1.4rem; margin:0; }
+.badge { font-size:12px; padding:6px 10px; border-radius:8px; background: linear-gradient(90deg,var(--neon1),var(--neon2)); color:#000; font-weight:600; }
+form { display: flex; gap: 10px; margin-bottom: 14px; }
+input { flex: 1; background: #050b10; border: 1px solid rgba(0,240,255,0.14); color: var(--text); border-radius: 10px; padding: 12px; font-size: 15px; outline: none; transition: border 0.18s; }
+input:focus { border-color: var(--neon2); box-shadow: 0 0 8px rgba(255,47,230,0.12); }
+button { background: linear-gradient(90deg, var(--neon1), var(--neon2)); border: none; border-radius: 10px; padding: 12px 16px; color: #000; font-weight: 700; cursor: pointer; transition: 0.12s; }
+button[disabled]{opacity:0.6;cursor:not-allowed;}
+.results { margin-top: 18px; }
+.card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px; margin-bottom: 12px; word-break: break-word; white-space: pre-wrap; }
+.card h3 { color: var(--neon2); margin:0 0 8px 0; font-size:1rem; }
+.card p.info { margin:0 0 8px 0; color:var(--muted); font-size:0.95rem; }
+.controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+.page-indicator { color:var(--muted); font-size:0.95rem; }
+.disclaimer-small { margin-top:10px; color:var(--muted); font-size:12px; text-align:center; }
+.modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:grid; place-items:center; z-index:9999; }
+.modal { width: min(720px, 94%); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; padding:18px; border:1px solid rgba(255,255,255,0.04); box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+.modal h2 { margin:0 0 8px 0; color:var(--neon1); font-size:1.05rem; }
+.modal p { color:var(--text); margin:8px 0; font-size:0.95rem; }
+@media (max-width:720px){ form { flex-direction: column; } input, button { width:100%; font-size:16px; } .modal { padding:14px; } h1 { font-size:1.15rem; } .container { padding:1rem; } }
+</style>
+</head>
+<body>
+  <div class="container" role="main">
+    <div class="header-row">
+      <h1>⚡ LeakOSINT Cyber Search</h1>
+      <div class="badge">Happy • Education & Investigation</div>
+    </div>
+
+    <form id="searchForm">
+      <input type="text" id="query" name="query" placeholder="Enter email, username, or phone..." autocomplete="off" required />
+      <button id="searchBtn" type="submit" disabled>Search</button>
+    </form>
+
+    <div id="status" aria-live="polite"></div>
+    <div class="results" id="results" aria-live="polite"></div>
+
+    <div class="controls" id="pager" style="display:none">
+      <button id="prevBtn">« Prev</button>
+      <div class="page-indicator" id="pageIndicator">1 / 1</div>
+      <button id="nextBtn">Next »</button>
+    </div>
+
+    <div class="disclaimer-small">
+      This tool was created by <strong>Happy</strong> for educational and investigative purposes only. Misuse is prohibited.
+    </div>
+  </div>
+
+  <!-- Disclaimer Modal -->
+  <div id="disclaimerModal" class="modal-backdrop" aria-modal="true" role="dialog">
+    <div class="modal" role="document">
+      <h2>Important — Usage & Responsibility</h2>
+      <p>
+        This tool was created by <strong>Happy</strong> and is provided
+        <strong>for educational and investigative purposes only</strong>.
+        Unauthorized or malicious use is strictly prohibited.
+      </p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button id="declineBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 10px;border-radius:8px">Decline</button>
+        <button id="acceptBtn" style="padding:8px 12px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));border:none;font-weight:700">I understand and agree</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("disclaimerModal");
+  const acceptBtn = document.getElementById("acceptBtn");
+  const declineBtn = document.getElementById("declineBtn");
+  const searchBtn = document.getElementById("searchBtn");
+  const form = document.getElementById("searchForm");
+  const queryInput = document.getElementById("query");
+  const resultsDiv = document.getElementById("results");
+  const statusDiv = document.getElementById("status");
+
+  const pager = document.getElementById("pager");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const pageIndicator = document.getElementById("pageIndicator");
+
+  let currentQueryId = null;
+  let currentPage = 0;
+  let totalPages = 0;
+
+  // Disclaimer logic
+  acceptBtn.addEventListener("click", () => {
+    modal.style.display = "none";
+    searchBtn.removeAttribute("disabled");
+    localStorage.setItem("leakosint_disclaimer_accepted", "1");
+  });
+  declineBtn.addEventListener("click", () => {
+    modal.style.display = "none";
+    searchBtn.setAttribute("disabled", "1");
+    statusDiv.innerHTML = '<p style="color:#ff8b8b">You declined the terms — searching disabled.</p>';
+    localStorage.removeItem("leakosint_disclaimer_accepted");
+  });
+  if (localStorage.getItem("leakosint_disclaimer_accepted") === "1") {
+    modal.style.display = "none";
+    searchBtn.removeAttribute("disabled");
+  }
+
+  // helpers
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"'`=\/]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[c]; });
+  }
+  function showPageContent(text){
+    resultsDiv.innerHTML = "";
+    const card = document.createElement("div");
+    card.className = "card";
+    // text already contains <b> tags coming from backend; we will render as HTML but sanitize basic
+    // we'll escape < and > then restore <b> tags for basic bolding
+    const safe = escapeHtml(text).replace(/&lt;b&gt;/g,"<b>").replace(/&lt;\/b&gt;/g,"</b>");
+    card.innerHTML = `<pre style="white-space:pre-wrap; background:transparent; border:none; padding:0; margin:0; color:var(--text)">${safe}</pre>`;
+    resultsDiv.appendChild(card);
+  }
+
+  async function fetchPage(queryId, pageIndex){
+    try{
+      statusDiv.innerHTML = "<p style='color:#00f0ff'>Loading page...</p>";
+      const res = await fetch("/api/page", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ query_id: queryId, page: pageIndex })
+      });
+      if(!res.ok){
+        const txt = await res.text();
+        statusDiv.innerHTML = `<p style='color:#ff8b8b'>Server error: ${res.status}</p>`;
+        return;
+      }
+      const data = await res.json();
+      if(data.error){
+        statusDiv.innerHTML = `<p style='color:#ff8b8b'>${escapeHtml(data.error)}</p>`;
+        return;
+      }
+      showPageContent(data.page_text);
+      statusDiv.innerHTML = `<p style='color:#00ff9d'>Page ${pageIndex+1} / ${totalPages}</p>`;
+      pageIndicator.textContent = `${pageIndex+1} / ${totalPages}`;
+      currentPage = pageIndex;
+      pager.style.display = totalPages>1 ? "flex":"none";
+    }catch(err){
+      console.error(err);
+      statusDiv.innerHTML = `<p style='color:#ff8b8b'>Network error</p>`;
+    }
+  }
+
+  // search -> call /api/search which will generate and cache report, and return query_id + pages_count + first page
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const q = queryInput.value.trim();
+    if(!q) return;
+    resultsDiv.innerHTML = "";
+    statusDiv.innerHTML = "<p style='color:#00f0ff'>Searching...</p>";
+    searchBtn.setAttribute("disabled","1");
+    try{
+      const res = await fetch("/api/search", {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ query: q })
+      });
+      const data = await res.json();
+      if(data.error){
+        statusDiv.innerHTML = `<p style='color:#ff8b8b'>${escapeHtml(data.error)}</p>`;
+        searchBtn.removeAttribute("disabled");
+        return;
+      }
+      currentQueryId = data.query_id;
+      totalPages = data.pages_count || (data.pages ? data.pages.length : 0);
+      // show first page
+      if(data.page_text){
+        showPageContent(data.page_text);
+        statusDiv.innerHTML = `<p style='color:#00ff9d'>Page 1 / ${totalPages}</p>`;
+      } else {
+        resultsDiv.innerHTML = "<div class='card'><p class='info'>No results.</p></div>";
+        statusDiv.innerHTML = "";
+      }
+      pageIndicator.textContent = `1 / ${totalPages}`;
+      pager.style.display = totalPages>1 ? "flex":"none";
+    }catch(err){
+      console.error(err);
+      statusDiv.innerHTML = `<p style='color:#ff8b8b'>Network error</p>`;
+    }finally{
+      searchBtn.removeAttribute("disabled");
+    }
+  });
+
+  prevBtn.addEventListener("click", () => {
+    if(currentQueryId===null) return;
+    let next = currentPage - 1;
+    if(next < 0) next = totalPages - 1;
+    fetchPage(currentQueryId, next);
+  });
+  nextBtn.addEventListener("click", () => {
+    if(currentQueryId===null) return;
+    let next = currentPage + 1;
+    if(next >= totalPages) next = 0;
+    fetchPage(currentQueryId, next);
+  });
+
+});
+</script>
+</body>
+</html>
